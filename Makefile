@@ -3,8 +3,8 @@ all: gerador clean
 gerador: main.o
 	g++ main.o -o gerador
 
-main.o: src/main.cpp
-	g++ -c  src/main.cpp
+main.o: main.cpp
+	g++ -c -g main.cpp
 
 clean:
 	rm -rf *.o
