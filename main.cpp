@@ -24,6 +24,7 @@ class Generator {
 
         /* Returns random block ID from a line */
         int getRandomBlockFromLine(Linha l) {
+
             if (l.nrCopies == 0) {
                 int r = rand();
                 return (r);
@@ -166,7 +167,7 @@ class Generator {
         
         /* retorna 1 -> ok, -1 -> error */
         int loadModels(){
-            cout << "Loading models..." << endl;
+            cout << "Creating models..." << endl;
             srand (time ( NULL));
             for(int compression = 5; compression <= 95; compression=compression+10){
                 
@@ -179,7 +180,7 @@ class Generator {
                     return -1;
                 }
             }
-            cout << "Loaded models with success." << endl;
+            cout << "Models created with success." << endl;
             return 1;
         }
     public:
@@ -196,8 +197,8 @@ class Generator {
             generate_data(buffer, blockKey, myCompression);
         }
 
-        /* Read input file for duplicate and compression distribution
-           Generate Models to generate data
+        /* Read input file for duplicate and compression distribution.
+            Generate Models to generate data
          * path: path to input file
          * Return 1:ok -1:error
         */
@@ -235,7 +236,7 @@ class Generator {
                         probabilidadeLinha = stof(token);
 
                         newLine.nrBlocks = (int) (nrBlocksToGenerate * (probabilidadeLinha / 100) / (newLine.nrCopies + 1));
-
+                        if(newLine.nrBlocks == 0) newLine.nrBlocks = 1;
                         nrBaseAux = nrBaseAux + newLine.nrBlocks;
                     }
                 }
@@ -258,11 +259,11 @@ class Generator {
         
 };
 
-int main(int argc, const char **argv) {
+int main(int argc, char ** argv){
     
-    const int blockSize = 4096, blocosAGerar = 1000000;
+    const int blockSize = 4096, blocosAGerar = 426617;
     Generator generator;
-    string pathToWrite = "./dataset/generateData", pathToRead = "./input.txt";
+    string pathToWrite = "/home/alexandre/Desktop/gerado/data", pathToRead = "./input.txt";
 
     if (generator.initialize(pathToRead, blockSize, blocosAGerar) == 1) {
         unsigned char *buffer = new unsigned char[blockSize]();
@@ -276,7 +277,7 @@ int main(int argc, const char **argv) {
             generator.nextBlock(buffer);
             fwrite(buffer,1,blockSize,write_ptr);
         }
-        
+
         cout << "Data generated with success." << endl;
         
     } 
