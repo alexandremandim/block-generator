@@ -145,7 +145,6 @@ class Generator {
             unsigned char *buffer = (unsigned char *)malloc(sizeof(unsigned char)*(tamanhoTotal));
 
             /* Gerar alguma aleatoriedade */
-
             for(int i = 0; i< nrBlocos4096; i++)
                 generate4096BytesBlock(&(buffer[i*4096]));
 
@@ -206,7 +205,7 @@ class Generator {
                     return -1;
                 }
             }
-            cout << "Models created with success." << endl;
+            cout << "Models created with success." << endl << endl;
             return 1;
         }
 
@@ -230,19 +229,26 @@ class Generator {
         }
 
         /* return tuple (min_media, max_media) */
-        tuple<double, double> get_media_inter(int total_blocks, int interval_analyze){
+        tuple<double, double> get_media_inter(int percentage_interval){
             
             int id_block_analyze = 1, previous_compression = -1, current_compression = -1, nr_pairs = 0;
             int new_media_max = 0, new_media_min = 0, total_media_min = 0, total_media_max = 0;
             int minimum = 0, maximum = 0;
 
-            if(!(total_blocks > 1 && total_blocks > interval_analyze/2)) return make_tuple(-1,-1);
+            if(!(percentage_interval > 0 && percentage_interval < 100))   return make_tuple(-1,-1);
 
-            while(id_block_analyze <= this->total_unique_blocks){
+            for(int i = 0; i < this->total_unique_blocks*percentage_interval/100; i++){
+                /* Generate new block */
+                random_device rd;
+                mt19937 gen(rd());
+                uniform_int_distribution<> dis(1, this->total_unique_blocks);
+                id_block_analyze = dis(gen);
 
+                /* Get compression */
                 current_compression = get_block_compression_by_id(id_block_analyze);
-                cout << "Block: " << id_block_analyze << "\tCompress: " << current_compression << endl;
+                //cout << "Block: " << id_block_analyze << "\tCompress: " << current_compression << endl;
             
+                /* Calculate media */
                 if(previous_compression == -1){
                     previous_compression = current_compression;           /* É o 1º elemento do par para calcular a media */
                 }
@@ -252,9 +258,9 @@ class Generator {
                     nr_pairs++; previous_compression = -1;
                     minimum += new_media_min; maximum += new_media_max;
                 }
-
-                id_block_analyze += interval_analyze;
             }
+            cout << "Values estimated based on " << nr_pairs << " pairs." << endl;
+
             return make_tuple(minimum/nr_pairs, maximum/nr_pairs);
         }
         
@@ -275,9 +281,12 @@ class Generator {
         /* Read input file for duplicate and compression distribution.
             Generate Models to generate data
          * path: path to input file
+         * block_size: size of each block
+         * nrBlocksToGenerate: number of blocks generated
+         * percentage: percetage of unique blocks used to estimate compression inter blocks
          * Return 1:ok -1:error
         */
-        int initialize(string path, int block_Size, int nrBlocksToGenerate, int interval) {
+        int initialize(string path, int block_Size, int nrBlocksToGenerate, int percentage) {
             if(block_Size < 4096) return -1;
 
             int nrBlocos4096 = block_Size/4096;
@@ -296,7 +305,7 @@ class Generator {
             }
             
             /* Reading line by line */
-            cout << "Reading file..." << path << endl;
+            cout << endl << "Reading file..." << path << endl;
             while (getline(fin, line)) {
                 Linha newLine;
 
@@ -324,20 +333,20 @@ class Generator {
                 this->linhas.push_back(newLine);
                 this->weights.push_back(probabilidadeLinha);
             }
-            cout << "File readed with success." << endl;
+            cout << "File readed with success." << endl << endl;
             
             /* Blocos únicos */
             for (vector<Linha>::iterator it = linhas.begin() ; it != linhas.end(); ++it){
                 this->total_unique_blocks += it->nrBlocks;
             }
 
-            cout << "Unique blocks: " << this->total_unique_blocks << endl;
-            cout << "Total blocks: " << this->total_blocks << endl;
-
+            cout << "Total blocks:\t" << this->total_blocks << endl;
+            cout << "Unique blocks:\t" << this->total_unique_blocks << endl << endl;
 
             /* Calcular o intervalo esperado de compressão entre blocos*/
-            tuple<double, double> intervalo = get_media_inter(nrBlocksToGenerate, interval);
-            cout << "Estimated Compression Interval: [" << get<0>(intervalo) << ", " << get<1>(intervalo) << "]" << endl;
+            cout << "Estimating interval of compression between two blocks" << endl;
+            tuple<double, double> intervalo = get_media_inter(percentage);
+            cout << "Estimated Compression Interval: [" << get<0>(intervalo) << ", " << get<1>(intervalo) << "]" << endl << endl;
 
             /* Generating Block Models */
             /* TODO: Alterar a geração de modelos, vamos gerar mais, consoante o intervalo esperado */
@@ -355,7 +364,7 @@ int main(int argc, char ** argv){
     Generator generator;
     string pathToWrite = "/home/alexandre/Desktop/gerado/data", pathToRead = "./input.txt";
 
-    if (generator.initialize(pathToRead, blockSize, blocosAGerar, 10) == 1) {
+    if (generator.initialize(pathToRead, blockSize, blocosAGerar, 3) == 1) {
         unsigned char *buffer = new unsigned char[blockSize]();
         FILE *write_ptr = fopen(pathToWrite.c_str(),"wb+");
 
@@ -368,8 +377,7 @@ int main(int argc, char ** argv){
             fwrite(buffer,1,blockSize,write_ptr);
         }
 
-        cout << "Data generated with success." << endl;
-        
+        cout << "Data generated with success." << endl;  
     } 
     else {
         cout << "Error" << endl;
