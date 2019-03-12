@@ -60,7 +60,7 @@ class Generator {
                 discrete_distribution<> distribution(linhaAleatoria.compression.begin(), linhaAleatoria.compression.end());
                 /* Devolve um indice (0-9)*/
                 int r = distribution(generator);
-                return r*10;
+                return r;
             }
             
             /* Cada bloco tem uma compressão ligada a ele */
@@ -199,7 +199,7 @@ class Generator {
 
                 if(block_id >= min_id_line && block_id <= max_id_line){ /* É esta a linha do bloco */
                     int x = giveMyCompression(*it, id_line);
-                    return x;
+                    return x * 10;
                 }
             }
             return -1;
