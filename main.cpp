@@ -120,23 +120,20 @@ class Generator {
         }
         
         /* Auxiliar Function to Generate Block Models*/
-        static void generate4096BytesBlock(unsigned char* buffer){
-            double seed = 1;
-            double max = 1.1; double min = 1.9;
-            double aleatorio =  min + (rand() / (RAND_MAX / (max - min)));
-
+        static void generate4096BytesBlock(unsigned char* buffer, double seed){
+            
+            double c = 1;
+            
             /* Gerar o bloco */
-            for(int contador = 0; contador < 4096/sizeof(seed); contador++){
-
-                /* ADDING KEY*/   
-                for (size_t i = 0; i < sizeof(seed); ++i) 
-                  buffer[(sizeof(seed)*contador)+i] = *((unsigned char *)&seed + i);
-                seed = seed * aleatorio;
+            for(int contador = 0; contador < 4096/sizeof(c); contador++){ 
+                for (size_t i = 0; i < sizeof(c); ++i) 
+                  buffer[(sizeof(c)*contador)+i] = *((unsigned char *)&c + i);
+                c = c * seed;
             }
         }
 
         /* Returns a block with 0% compression */
-        unsigned char* generateBlockWithNoCompression(int blockSize){
+        unsigned char* generateBlockWithNoCompression(int blockSize, double seed){
             if(blockSize < 4096) return NULL;
 
             int nrBlocos4096 = blockSize/4096;
@@ -146,7 +143,7 @@ class Generator {
 
             /* Gerar alguma aleatoriedade */
             for(int i = 0; i< nrBlocos4096; i++)
-                generate4096BytesBlock(&(buffer[i*4096]));
+                generate4096BytesBlock(&(buffer[i*4096]), seed);
 
             return buffer;
         }
@@ -179,12 +176,12 @@ class Generator {
          * Compression must be between 1 and 99. 
          * The blockSize must be multiple of 4096
          */
-        unsigned char* blockModel(int blockSize, int compression){
+        unsigned char* blockModel(int blockSize, int compression, double seed){
 
             if(compression < 1 || compression > 99) return NULL;
             int size = blockSize/4096; size = size * 4096; /* blockSize must be multiple of 4096 */
 
-            unsigned char* buffer = generateBlockWithNoCompression(size);
+            unsigned char* buffer = generateBlockWithNoCompression(size, seed);
             if(buffer != NULL) transformBlockToCompress(buffer,compression,size);
 
             return buffer;
@@ -194,9 +191,17 @@ class Generator {
         int loadModels(){
             cout << "Creating models..." << endl;
             srand (time ( NULL));
-            for(int compression = 5; compression <= 95; compression=compression+10){
-                
-                unsigned char *buffer = blockModel(this->blockSize, compression);
+
+            /* Gerar um valor random (double) que vai ser utilizado para gerar um bloco sem compressão, 
+            através da multiplicação sucessivada deste valor */
+            /* Neste caso, como geramos apenas uma seed, todos os modelos vão ser iguais na parte que não comprime */
+
+            double max = 1.1; double min = 1.9;
+            double seed =  min + (rand() / (RAND_MAX / (max - min)));
+
+            for(int compression = 5; compression <= 95; compression=compression+10){        
+
+                unsigned char *buffer = blockModel(this->blockSize, compression, seed);
                 
                 if(buffer != NULL)
                     this->modelos.push_back(buffer);
