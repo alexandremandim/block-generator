@@ -1,3 +1,0 @@
-1 - Quando uma linha tem uma percentagem muito baixa, 
-pode arredondar para gerar 0 blocos. Nestes casos passo para 1. 
-Existe problema?
