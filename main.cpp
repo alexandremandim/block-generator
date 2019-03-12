@@ -5,6 +5,7 @@
 #include <vector>
 #include <random>
 #include <string> 
+#include <tuple>
 
 using namespace std;
 
@@ -48,7 +49,7 @@ class Generator {
             return linhas.at(distribution(generator));
         }
 
-        /* Returns compression from a block */
+        /* Returns compression index from a block */
         int giveMyCompression(Linha linhaAleatoria, int randomBlockID) {
 
             /* Como o ID é completamente aleatório, também a compressão vai ser com base nas percentagens */
@@ -58,7 +59,8 @@ class Generator {
                 std::default_random_engine generator(seedDistr);
                 discrete_distribution<> distribution(linhaAleatoria.compression.begin(), linhaAleatoria.compression.end());
                 /* Devolve um indice (0-9)*/
-                return distribution(generator);
+                int r = distribution(generator);
+                return r*10;
             }
             
             /* Cada bloco tem uma compressão ligada a ele */
@@ -77,7 +79,6 @@ class Generator {
         }
         
         /* Fill buffer with data with a blockID and compression */
-        
         void generate_data(unsigned char* buffer, int blockKey, int compression){
             
             unsigned char* bufferModelo = modelos.at(compression);
@@ -183,6 +184,56 @@ class Generator {
             cout << "Models created with success." << endl;
             return 1;
         }
+
+        /* return block compression or -1 (error) */
+        int get_block_compression_by_id(int block_id){
+
+            Linha l;
+            int min_id_line, max_id_line, id_line;
+
+            for (vector<Linha>::iterator it = linhas.begin() ; it != linhas.end(); ++it){
+
+                min_id_line = it->nrBase + 1;
+                max_id_line = it->nrBase + it->nrBlocks;
+                id_line = block_id - it->nrBase;
+
+                if(block_id >= min_id_line && block_id <= max_id_line){ /* É esta a linha do bloco */
+                    int x = giveMyCompression(*it, id_line);
+                    return x;
+                }
+            }
+            return -1;
+        }
+
+        /* return tuple (min_media, max_media) */
+        tuple<double, double> get_media_inter(int total_blocks, int interval_analyze){
+            
+            int id_block_analyze = 1, previous_compression = -1, current_compression = -1, nr_pairs = 0;
+            int new_media_max = 0, new_media_min = 0, total_media_min = 0, total_media_max = 0;
+
+            if(!(total_blocks > 1 && total_blocks > interval_analyze/2)) return make_tuple(-1,-1);
+
+            while(id_block_analyze <= total_blocks){
+
+                current_compression = get_block_compression_by_id(id_block_analyze);
+            
+                if(previous_compression == -1){
+                    previous_compression = current_compression;           /* É o 1º elemento do par para calcular a media */
+                }
+                else{
+                    new_media_max = (current_compression + previous_compression + min((100-current_compression),(100-previous_compression)))/2;
+                    new_media_min = (current_compression + previous_compression)/2;
+                    total_media_min =  ((total_media_min*nr_pairs) + new_media_min)/(nr_pairs + 1);                                                 /* Calcular media */
+                    total_media_max =  ((total_media_max*nr_pairs) + new_media_max)/(nr_pairs + 1);     
+                    nr_pairs++; previous_compression = -1;
+                }
+
+                id_block_analyze += interval_analyze;
+            }
+
+            return make_tuple(total_media_min, total_media_max);
+        }
+        
     public:
                 
         void nextBlock(unsigned char* buffer) {
@@ -202,7 +253,7 @@ class Generator {
          * path: path to input file
          * Return 1:ok -1:error
         */
-        int initialize(string path, int block_Size, int nrBlocksToGenerate) {
+        int initialize(string path, int block_Size, int nrBlocksToGenerate, int interval) {
             if(block_Size < 4096) return -1;
 
             int nrBlocos4096 = block_Size/4096;
@@ -218,10 +269,9 @@ class Generator {
                 cout << "Can't open file " << path << endl;
                 return -1;
             }
-
-            cout << "Reading file..." << path << endl;
-
+            
             /* Reading line by line */
+            cout << "Reading file..." << path << endl;
             while (getline(fin, line)) {
                 Linha newLine;
 
@@ -249,23 +299,31 @@ class Generator {
                 this->linhas.push_back(newLine);
                 this->weights.push_back(probabilidadeLinha);
             }
-
             cout << "File readed with success." << endl;
             
+
+            /* Calcular o intervalo esperado de compressão entre blocos*/
+            tuple<double, double> intervalo = get_media_inter(nrBlocksToGenerate, interval);
+            cout << "Compression Interval: [" << get<0>(intervalo) << ", " << get<1>(intervalo) << "]" << endl;
+
             /* Generating Block Models */
-            
-            return(loadModels());
+            /* TODO: Alterar a geração de modelos, vamos gerar mais, consoante o intervalo esperado */
+            int returnLoadModels = loadModels();
+
+
+            /* TODO: Por fim, associar modelos aos blocos., alterar geração */
+            return(returnLoadModels);
         }
         
 };
 
 int main(int argc, char ** argv){
     
-    const int blockSize = 4096, blocosAGerar = 426617;
+    const int blockSize = 4096, blocosAGerar = 3048728;
     Generator generator;
     string pathToWrite = "/home/alexandre/Desktop/gerado/data", pathToRead = "./input.txt";
 
-    if (generator.initialize(pathToRead, blockSize, blocosAGerar) == 1) {
+    if (generator.initialize(pathToRead, blockSize, blocosAGerar, 500) == 1) {
         unsigned char *buffer = new unsigned char[blockSize]();
         FILE *write_ptr = fopen(pathToWrite.c_str(),"wb+");
 
