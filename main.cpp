@@ -19,6 +19,7 @@ class Generator {
 
     private:
         int blockSize = 4096, total_blocks = 0, total_unique_blocks = 0; /* bytes */
+        tuple<double, double> compressions_inter_blocks_interval;
         vector<Linha> linhas;
         vector<double> weights;
         vector<unsigned char*> modelos;
@@ -187,8 +188,17 @@ class Generator {
             return buffer;
         }
         
-        /* retorna 1 -> ok, -1 -> error */
-        int loadModels(){
+        /* 
+         * different_nc_ratio: ratio of blocks with different non-compressive areas needed
+         *                     to achive wanted media
+         * return: 1 -> ok, -1 -> error 
+         */
+        int loadModels(int different_nc_ratio){
+
+           /* TODO: Gerar outros modelos com ares de não compressão diferentes, 
+           de forma a tornar different_nc_ratio do dataset diferente. */
+            
+
             cout << "Creating models..." << endl;
             srand (time ( NULL));
 
@@ -291,7 +301,7 @@ class Generator {
          * percentage: percetage of unique blocks used to estimate compression inter blocks
          * Return 1:ok -1:error
         */
-        int initialize(string path, int block_Size, int nrBlocksToGenerate, int percentage) {
+        int initialize(string path, int block_Size, int nrBlocksToGenerate, int percentage, int wanted_media_compression_inter_blocks) {
             if(block_Size < 4096) return -1;
 
             int nrBlocos4096 = block_Size/4096;
@@ -350,14 +360,27 @@ class Generator {
 
             /* Calcular o intervalo esperado de compressão entre blocos*/
             cout << "Estimating interval of compression between two blocks" << endl;
-            tuple<double, double> intervalo = get_media_inter(percentage);
-            cout << "Estimated Compression Interval: [" << get<0>(intervalo) << ", " << get<1>(intervalo) << "]" << endl << endl;
+            compressions_inter_blocks_interval = get_media_inter(percentage);
+            cout << "Estimated Compression Interval: [" << get<0>(compressions_inter_blocks_interval) 
+                << ", " << get<1>(compressions_inter_blocks_interval) << "]" << endl << endl;
 
+            /* Check if wanted media belongs to inverval */
+            double infLimit = get<0>(this->compressions_inter_blocks_interval);
+            double supLimit = get<1>(this->compressions_inter_blocks_interval);
+            if(wanted_media_compression_inter_blocks < infLimit){       /* Wanted media not in interval */
+                wanted_media_compression_inter_blocks = infLimit;
+            }
+            else if(wanted_media_compression_inter_blocks > supLimit){  /* Wanted media not in interval */
+                wanted_media_compression_inter_blocks = supLimit;
+            }
+
+            /* Calculating different_ratio used to change model blocks */
+            int different_ratio = (wanted_media_compression_inter_blocks - infLimit) / (supLimit - infLimit); /* ratio of different non-compression areas needed to achive wanted media */
             /* Generating Block Models */
-            /* TODO: Alterar a geração de modelos, vamos gerar mais, consoante o intervalo esperado */
-            int returnLoadModels = loadModels();
+            int returnLoadModels = loadModels(different_ratio);
 
             /* TODO: Por fim, associar modelos aos blocos., alterar geração */
+    
             return(returnLoadModels);
         }
         
@@ -365,16 +388,18 @@ class Generator {
 
 int main(int argc, char ** argv){
     
-    const int blockSize = 4096, blocosAGerar = 3048728;
+    const int blockSize = 4096, blocosAGerar = 416830;
+    const int wanted_media = 50, percentage_unique_blocks_analyze = 5;
     Generator generator;
     string pathToWrite = "/home/alexandre/Desktop/gerado/data", pathToRead = "./input.txt";
 
-    if (generator.initialize(pathToRead, blockSize, blocosAGerar, 3) == 1) {
+    if (generator.initialize(pathToRead, blockSize, blocosAGerar, 
+        percentage_unique_blocks_analyze, wanted_media) == 1) {
         unsigned char *buffer = new unsigned char[blockSize]();
         FILE *write_ptr = fopen(pathToWrite.c_str(),"wb+");
 
         if(write_ptr == NULL) {cout << "Cannot open file to write." << endl; return -1;}
-        
+ 
         cout << "Start generating data..." << endl;
 
         for(int i = 0; i < blocosAGerar; i++){
@@ -383,7 +408,7 @@ int main(int argc, char ** argv){
         }
 
         cout << "Data generated with success." << endl;  
-    } 
+        }
     else {
         cout << "Error" << endl;
         return -1;
