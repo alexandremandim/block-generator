@@ -178,7 +178,8 @@ class Generator {
             /* Atribuir os modelos a blocos */
             int bu = this->total_unique_blocks;
             double p = (double)percentagem_compressao_entre_blocos / (double)100;
-            cout << "Trying to achive " << p*(get<1>(this->compressions_inter_blocks_interval) - get<0>(this->compressions_inter_blocks_interval)) << " compression between 2 random blocks." << endl;
+            int perc_trying_to_achive = p*(get<1>(this->compressions_inter_blocks_interval) - get<0>(this->compressions_inter_blocks_interval)) + get<0>(this->compressions_inter_blocks_interval);
+            cout << "Trying to achive " << perc_trying_to_achive << " compression between 2 random blocks." << endl;
             int x = sqrt(p) * bu, r = bu - x, y = r / (nr_models - 1), z = r % (nr_models - 1), w = (nr_models - 1) - z;
             for(int i = 0; i < 1; i++)  this->atribuicao_blocos_unicos_para_modelos.push_back(x);
             for(int i = 0; i < w; i++)  this->atribuicao_blocos_unicos_para_modelos.push_back(y);
@@ -345,9 +346,9 @@ class Generator {
 
 int main(int argc, char ** argv){
     
-    const int blockSize = 4096, blocosAGerar = 100000;
+    const int blockSize = 4096, blocosAGerar = 1000000;
     const int percentage_unique_blocks_analyze = 5;
-    const int percentagem_compressao_entre_blocos = 75; /* Variavel entre 1 e 100. 1 Significa q deve comprimir o minimo possivel entre 2 blocos, 100 o máximo */
+    const int percentagem_compressao_entre_blocos = 1; /* Variavel entre 1 e 100. 1 Significa q deve comprimir o minimo possivel entre 2 blocos, 100 o máximo */
     Generator generator;
     string pathToWrite = "/home/alexandre/Desktop/gerado/data", pathToRead = "./input.txt";
 
