@@ -6,27 +6,35 @@
 #include <random>
 #include <string> 
 #include <tuple>
+#include <unistd.h>
 
 using namespace std;
 
+struct globalArgs_t {
+    int blockSize, blocosAGerar, percentage_unique_blocks_analyze, percentagem_compressao_entre_blocos;
+    char *writePath, *readPath;
+} globalArgs;
+
+static const char *optString = "r:w:s:n:a:p:h?";
+
 class Linha{
     public:
-        int nrCopies, nrBlocks, nrBase;
+        unsigned int nrCopies, nrBlocks, nrBase;
         vector<double> compression; 
 };
 
 class Generator {
 
     private:
-        int blockSize = 4096, total_blocks = 0, total_unique_blocks = 0; /* bytes */
+        unsigned int blockSize = 4096, total_blocks = 0, total_unique_blocks = 0; /* bytes */
         tuple<double, double> compressions_inter_blocks_interval;
         vector<Linha> linhas;
         vector<double> weights;
         vector<vector<unsigned char*>> modelos;     /* Vector com 100 modelos  Cada modelo tem 10 blocos (compressao 0, 10, 20 , ..., 100) */
-        vector<int> atribuicao_blocos_unicos_para_modelos; /* Vetor com 100 posicoes. Cada posicao representa o numero de blocos desse modelo */
+        vector<unsigned int> atribuicao_blocos_unicos_para_modelos; /* Vetor com 100 posicoes. Cada posicao representa o numero de blocos desse modelo */
 
         /* Returns random block ID from a line */
-        int getRandomBlockFromLine(Linha l) {
+        unsigned int getRandomBlockFromLine(Linha l) {
 
             random_device rd; //Will be used to obtain a seed for the random number engine
             mt19937 gen(rd()); //Standard mersenne_twister_engine seeded with rd()
@@ -47,7 +55,7 @@ class Generator {
         }
 
         /* Returns compression index from a block */
-        int giveMyCompression(Linha linhaAleatoria, int randomBlockID) {
+        unsigned int giveMyCompression(Linha linhaAleatoria, unsigned int randomBlockID) {
 
             double myPercent = ((double) randomBlockID) / linhaAleatoria.nrBlocks * 100;
             double aux = 0;
@@ -62,10 +70,11 @@ class Generator {
         }
         
         /* Fill buffer with data with a blockID and compression */
-        void generate_data(unsigned char* buffer, int blockKey, int compression){
+        void generate_data(unsigned char* buffer, unsigned int blockKey, unsigned int compression){
 
-            int indice = 0, somatorio_ids = this->atribuicao_blocos_unicos_para_modelos.at(indice);
+            unsigned int indice = 0, somatorio_ids = this->atribuicao_blocos_unicos_para_modelos.at(indice);
 
+            /* ciclo para calcular o indice do modelo */
             while(blockKey > somatorio_ids && indice < this->atribuicao_blocos_unicos_para_modelos.size()){
                 indice++;
                 somatorio_ids += this->atribuicao_blocos_unicos_para_modelos.at(indice);
@@ -77,7 +86,7 @@ class Generator {
 
             /* Copiar o buffer (Posso otimizar este passo para ser mais rapido).
              * Em vez de copiar insiro o blockKey no bufferModelo e retorno-o */
-            for(int i = 0; i < blockSize; i ++)
+            for(unsigned int i = 0; i < blockSize; i ++)
                 buffer[i] = bufferModelo[i];
             
             /* alterar os primeiros 4 bytes */
@@ -90,7 +99,7 @@ class Generator {
          * Compression must be between 1 and 99. 
          * The blockSize must be multiple of 4096
          */
-        unsigned char* blockModel(int blockSize, int compression, double seed){
+        unsigned char* blockModel(unsigned int blockSize, unsigned int compression, double seed){
 
             if(compression < 1 || compression > 99) return NULL;
             int size = blockSize/4096; size = size * 4096; /* blockSize must be multiple of 4096 */
@@ -142,15 +151,15 @@ class Generator {
          * nr_model_vectors: nr of vectors loaded
          * return: 1 -> ok, -1 -> error 
          */
-        int loadModels(int percentagem_compressao_entre_blocos){
+        int loadModels(unsigned int percentagem_compressao_entre_blocos){
 
-            int nr_models = 100;
+            unsigned int nr_models = 100;
 
             cout << "Creating  " << nr_models << "  model(s)..." << endl;
             srand (time ( NULL));
             
             /* Gerar todos os vetores de modelos para memória */
-            for(int vectores_created = 0; vectores_created < nr_models; vectores_created++){
+            for(unsigned int vectores_created = 0; vectores_created < nr_models; vectores_created++){
                 /* Gerar um valor random (double) que vai ser utilizado para gerar um bloco sem compressão, 
                 através da multiplicação sucessivada deste valor */
                 /* Neste caso, como geramos apenas uma seed, todos os modelos vão ser iguais na parte que não comprime */
@@ -176,14 +185,14 @@ class Generator {
             }
 
             /* Atribuir os modelos a blocos */
-            int bu = this->total_unique_blocks;
+            unsigned int bu = this->total_unique_blocks;
             double p = (double)percentagem_compressao_entre_blocos / (double)100;
             int perc_trying_to_achive = p*(get<1>(this->compressions_inter_blocks_interval) - get<0>(this->compressions_inter_blocks_interval)) + get<0>(this->compressions_inter_blocks_interval);
             cout << "Trying to achive " << perc_trying_to_achive << " compression between 2 random blocks." << endl;
-            int x = sqrt(p) * bu, r = bu - x, y = r / (nr_models - 1), z = r % (nr_models - 1), w = (nr_models - 1) - z;
-            for(int i = 0; i < 1; i++)  this->atribuicao_blocos_unicos_para_modelos.push_back(x);
-            for(int i = 0; i < w; i++)  this->atribuicao_blocos_unicos_para_modelos.push_back(y);
-            for(int i = 0; i < z; i++)  this->atribuicao_blocos_unicos_para_modelos.push_back(y+1);
+            unsigned int x = sqrt(p) * bu, r = bu - x, y = r / (nr_models - 1), z = r % (nr_models - 1), w = (nr_models - 1) - z;
+            for(unsigned int i = 0; i < 1; i++)  this->atribuicao_blocos_unicos_para_modelos.push_back(x);
+            for(unsigned int i = 0; i < w; i++)  this->atribuicao_blocos_unicos_para_modelos.push_back(y);
+            for(unsigned int i = 0; i < z; i++)  this->atribuicao_blocos_unicos_para_modelos.push_back(y+1);
 
             cout << "Models created with success." << endl << endl;            
             return 1;
@@ -251,10 +260,10 @@ class Generator {
             Linha linhaAleatoria = getLinha();
             int myCompression = 0;
 
-            int randomBlockID = getRandomBlockFromLine(linhaAleatoria);
+            unsigned int randomBlockID = getRandomBlockFromLine(linhaAleatoria);
             myCompression = giveMyCompression(linhaAleatoria, randomBlockID);
             
-            int blockKey = randomBlockID + linhaAleatoria.nrBase;
+            unsigned int blockKey = randomBlockID + linhaAleatoria.nrBase;
             generate_data(buffer, blockKey, myCompression);
         }
 
@@ -266,27 +275,27 @@ class Generator {
          * percentage: percetage of unique blocks used to estimate compression inter blocks
          * Return 1:ok -1:error
         */
-        int initialize(string path, int block_Size, int nrBlocksToGenerate, int percentage, int percentagem_compressao_entre_blocos) {
-            if(block_Size < 4096) return -1;                                                                     
-            if(!(percentagem_compressao_entre_blocos >= 1 && percentagem_compressao_entre_blocos <= 100)) return -1; /* Variavel tem q estar no intervalo [1,100] */
+        int initialize() {
+            if(globalArgs.blockSize < 4096) return -1;                                                                     
+            if(!(globalArgs.percentagem_compressao_entre_blocos >= 1 && globalArgs.percentagem_compressao_entre_blocos <= 100)) return -1; /* Variavel tem q estar no intervalo [1,100] */
 
-            int nrBlocos4096 = block_Size/4096;
+            unsigned int nrBlocos4096 = globalArgs.blockSize/4096;
             this->blockSize = nrBlocos4096*4096;
-            this->total_blocks = nrBlocksToGenerate;
+            this->total_blocks = globalArgs.blocosAGerar;
              
             /* Reading Input File */
-            int nrBaseAux = 0;
+            unsigned int nrBaseAux = 0;
             istringstream iss;
             string line;
 
-            ifstream fin(path);
+            ifstream fin(globalArgs.readPath);
             if (!fin) {
-                cout << "Can't open file " << path << endl;
+                cout << "Can't open file " << globalArgs.readPath << endl;
                 return -1;
             }
             
             /* Reading line by line */
-            cout << endl << "Reading file..." << path << endl;
+            cout << endl << "Reading file..." << globalArgs.readPath << endl;
             while (getline(fin, line)) {
                 Linha newLine;
 
@@ -300,8 +309,11 @@ class Generator {
                     if (getline(ss, token, ' ')) {
                         probabilidadeLinha = stof(token);
 
-                        newLine.nrBlocks = (int) (nrBlocksToGenerate * (probabilidadeLinha / 100) / (newLine.nrCopies + 1));
+                        newLine.nrBlocks = (unsigned int) (this->total_blocks * (probabilidadeLinha / 100) / (newLine.nrCopies + 1));
                         if(newLine.nrBlocks == 0) newLine.nrBlocks = 1;
+                        if(newLine.nrCopies==0){        /* Apenas linha com 0 copias */
+                            newLine.nrBlocks *= 50;
+                        }
                         nrBaseAux = nrBaseAux + newLine.nrBlocks;
                     }
                 }
@@ -315,10 +327,12 @@ class Generator {
                 this->weights.push_back(probabilidadeLinha);
             }
             cout << "File readed with success." << endl << endl;
+            cout << "File readed with success." << endl << endl;
             
             /* Blocos únicos */
             for (vector<Linha>::iterator it = linhas.begin() ; it != linhas.end(); ++it){
-                this->total_unique_blocks += it->nrBlocks;
+                
+                    this->total_unique_blocks += it->nrBlocks;
             }
 
             cout << "Total blocks:\t" << this->total_blocks << endl;
@@ -326,7 +340,7 @@ class Generator {
 
             /* Calcular o intervalo esperado de compressão entre blocos*/
             //cout << "Estimating interval of compression between two blocks" << endl;
-            compressions_inter_blocks_interval = get_media_inter(percentage);
+            compressions_inter_blocks_interval = get_media_inter(globalArgs.percentage_unique_blocks_analyze);
             cout << "Estimated Compression Interval: [" << get<0>(compressions_inter_blocks_interval) 
                 << ", " << get<1>(compressions_inter_blocks_interval) << "]" << endl << endl;
 
@@ -335,39 +349,80 @@ class Generator {
             double supLimit = get<1>(this->compressions_inter_blocks_interval);
 
             /* Generating Block Models */
-            /* TODO: enviar o parametro correto */
-            int returnLoadModels = loadModels(percentagem_compressao_entre_blocos);
-
-            /* TODO: Por fim, associar modelos aos blocos., alterar geração */
+            int returnLoadModels = loadModels(globalArgs.percentagem_compressao_entre_blocos);
     
             return(returnLoadModels);
         }
 };
 
-int main(int argc, char ** argv){
-    
-    const int blockSize = 4096, blocosAGerar = 1000000;
-    const int percentage_unique_blocks_analyze = 5;
-    const int percentagem_compressao_entre_blocos = 1; /* Variavel entre 1 e 100. 1 Significa q deve comprimir o minimo possivel entre 2 blocos, 100 o máximo */
-    Generator generator;
-    string pathToWrite = "/home/alexandre/Desktop/gerado/data", pathToRead = "./input.txt";
+int main(int argc, char *argv[]){
 
-    if (generator.initialize(pathToRead, blockSize, blocosAGerar, 
-        percentage_unique_blocks_analyze, percentagem_compressao_entre_blocos) == 1) {
-        unsigned char *buffer = new unsigned char[blockSize]();
-        FILE *write_ptr = fopen(pathToWrite.c_str(),"wb+");
+    /* Inicilizar variaveis */
+    globalArgs.blockSize = 4096;
+    globalArgs.blocosAGerar = 1000;
+    globalArgs.percentage_unique_blocks_analyze = 5;
+    globalArgs.percentagem_compressao_entre_blocos = 50;
+    globalArgs.readPath = "./input.txt";
+    globalArgs.writePath = "~/Desktop/gerado/testes/";
+
+    Generator generator;
+
+    /* Args parser */
+    int opt = getopt( argc, argv, optString );
+    while( opt != -1 ) {
+        switch(opt)  
+        {
+            case 'r':  /* read path */
+                globalArgs.readPath = optarg;
+                cout << "Read path: " << globalArgs.readPath << endl;  
+                break; 
+            case 'w':  /* write path */
+                globalArgs.writePath = optarg;
+                cout << "Write path: " << globalArgs.writePath<< endl;    
+                break; 
+            case 's':  /* block size */
+                globalArgs.blockSize = atoi(optarg);
+                cout << "Block size: " << globalArgs.blockSize << endl; 
+                /* todo: tem q ser multiplo de 4096 */
+                break;  
+            case 'n':  /* nr of blocks to generate */
+                globalArgs.blocosAGerar = atoi(optarg);
+                cout << "Nr blocks: " << globalArgs.blocosAGerar << endl; 
+                break; 
+            case 'a':  /* percentage to analyze (inter compression) */
+                globalArgs.percentage_unique_blocks_analyze = atoi(optarg);
+                cout << "Percentage to analyze: " << globalArgs.percentage_unique_blocks_analyze << endl;  
+                break;  
+            case 'p':   /* percentage to compress inter blocks */ 
+                globalArgs.percentagem_compressao_entre_blocos = atoi(optarg);
+               cout << "Percentage to compress inter blocks: " << globalArgs.percentagem_compressao_entre_blocos << endl;  
+                /* todo: must be between 1-100 */
+                break;  
+            case 'h':   /* fall-through is intentional */
+            case '?':
+                /* TODO: Mostrar help */
+                break;
+                 
+            default:
+                /* You won't actually get here. */
+                break; 
+        }     
+        opt = getopt( argc, argv, optString );
+    }
+
+    if (generator.initialize() == 1) {
+        unsigned char *buffer = new unsigned char[globalArgs.blockSize]();
+        FILE *write_ptr = fopen(globalArgs.writePath,"wb+");
 
         if(write_ptr == NULL) {cout << "Cannot open file to write." << endl; return -1;}
  
         cout << "Start generating data..." << endl;
-
-        for(int i = 0; i < blocosAGerar; i++){
+        for(unsigned int i = 0; i < globalArgs.blocosAGerar; i++){
             generator.nextBlock(buffer);
-            fwrite(buffer,1,blockSize,write_ptr);
+            fwrite(buffer, 1, globalArgs.blockSize, write_ptr);
         }
-
         cout << "Data generated with success." << endl;  
-        }
+    }
     else {
         cout << "Error" << endl;
         return -1;

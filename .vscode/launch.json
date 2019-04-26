@@ -9,7 +9,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/gerador",
-            "args": [],
+            "args": [ "-r", "./input.txt", "-w", "/home/alexandre/Desktop/gerado/debug/teste", "-n", "10000000", "-a", "5", "-p", "50"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],
