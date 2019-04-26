@@ -357,6 +357,8 @@ class Generator {
 
 int main(int argc, char *argv[]){
 
+    clock_t tStart = clock();
+    
     /* Inicilizar variaveis */
     globalArgs.blockSize = 4096;
     globalArgs.blocosAGerar = 1000;
@@ -427,6 +429,6 @@ int main(int argc, char *argv[]){
         cout << "Error" << endl;
         return -1;
     }
-
+    printf("Time taken: %.2fs\n", (double)(clock() - tStart)/CLOCKS_PER_SEC);
     return 1;
 }
