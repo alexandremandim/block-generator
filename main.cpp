@@ -87,9 +87,18 @@ class Generator {
             /* Copiar o buffer (Posso otimizar este passo para ser mais rapido).
              * Em vez de copiar insiro o blockKey no bufferModelo e retorno-o */
             for(unsigned int i = 0; i < blockSize; i ++)
-                buffer[i] = bufferModelo[i];
+                buffer[i] = bufferModelo[i];     
             
             /* alterar os primeiros 4 bytes */
+            /* Aleatoriadade na 1ª linha */
+            for(Linha l : this->linhas){
+                if(l.nrCopies == 0){    /* Linha com 0 copias */
+                    if(blockKey < l.nrBlocks){  /* O id do bloco pertence a esta linha */
+                        blockKey =  rand();/* atribuir um numero aleatorio */
+                    }
+                    break;
+                }
+            }
             for (size_t i = 0; i < sizeof(blockKey); ++i)
                 buffer[i] = *((unsigned char *)&blockKey + i);
             
@@ -156,7 +165,6 @@ class Generator {
             unsigned int nr_models = 100;
 
             cout << "Creating  " << nr_models << "  model(s)..." << endl;
-            srand (time ( NULL));
             
             /* Gerar todos os vetores de modelos para memória */
             for(unsigned int vectores_created = 0; vectores_created < nr_models; vectores_created++){
@@ -276,6 +284,7 @@ class Generator {
          * Return 1:ok -1:error
         */
         int initialize() {
+            srand (time ( NULL));
             if(globalArgs.blockSize < 4096) return -1;                                                                     
             if(!(globalArgs.percentagem_compressao_entre_blocos >= 1 && globalArgs.percentagem_compressao_entre_blocos <= 100)) return -1; /* Variavel tem q estar no intervalo [1,100] */
 
@@ -311,9 +320,6 @@ class Generator {
 
                         newLine.nrBlocks = (unsigned int) (this->total_blocks * (probabilidadeLinha / 100) / (newLine.nrCopies + 1));
                         if(newLine.nrBlocks == 0) newLine.nrBlocks = 1;
-                        if(newLine.nrCopies==0){        /* Apenas linha com 0 copias */
-                            newLine.nrBlocks *= 50;
-                        }
                         nrBaseAux = nrBaseAux + newLine.nrBlocks;
                     }
                 }
