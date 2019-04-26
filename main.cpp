@@ -160,8 +160,7 @@ class Generator {
          * nr_model_vectors: nr of vectors loaded
          * return: 1 -> ok, -1 -> error 
          */
-        int loadModels(unsigned int percentagem_compressao_entre_blocos){
-
+        int loadModels(){
             unsigned int nr_models = 100;
 
             cout << "Creating  " << nr_models << "  model(s)..." << endl;
@@ -194,7 +193,7 @@ class Generator {
 
             /* Atribuir os modelos a blocos */
             unsigned int bu = this->total_unique_blocks;
-            double p = (double)percentagem_compressao_entre_blocos / (double)100;
+            double p = (double)globalArgs.percentagem_compressao_entre_blocos / (double)100;
             int perc_trying_to_achive = p*(get<1>(this->compressions_inter_blocks_interval) - get<0>(this->compressions_inter_blocks_interval)) + get<0>(this->compressions_inter_blocks_interval);
             cout << "Trying to achive " << perc_trying_to_achive << " compression between 2 random blocks." << endl;
             unsigned int x = sqrt(p) * bu, r = bu - x, y = r / (nr_models - 1), z = r % (nr_models - 1), w = (nr_models - 1) - z;
@@ -355,7 +354,7 @@ class Generator {
             double supLimit = get<1>(this->compressions_inter_blocks_interval);
 
             /* Generating Block Models */
-            int returnLoadModels = loadModels(globalArgs.percentagem_compressao_entre_blocos);
+            int returnLoadModels = loadModels();
     
             return(returnLoadModels);
         }
