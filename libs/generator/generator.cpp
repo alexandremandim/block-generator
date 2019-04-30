@@ -239,6 +239,7 @@ Generator::Generator()
 {
     globalArgs.blockSize = 4096;
     globalArgs.blocosAGerar = 100000;
+    globalArgs.total_unique_blocks = 0;
     globalArgs.percentage_unique_blocks_analyze = 5;
     globalArgs.percentagem_compressao_entre_blocos = 50;
     globalArgs.writePath = "./output/outputfile";
@@ -249,6 +250,7 @@ Generator::Generator(unsigned int blockSize, unsigned int blocosToGenerate,
 {
     globalArgs.blockSize = blockSize;
     globalArgs.blocosAGerar = blocosToGenerate;
+    globalArgs.total_unique_blocks = 0;
     globalArgs.percentage_unique_blocks_analyze = percentage_unique_blocks_analyze;
     globalArgs.percentagem_compressao_entre_blocos = compression_percentage_between_blocks;
     globalArgs.writePath = writePath;
